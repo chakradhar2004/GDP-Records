@@ -3,6 +3,7 @@ export type GdpRecord = {
   id: string;
   year: number;
   value: number;
+  country: string;
 };
 
 export type User = {

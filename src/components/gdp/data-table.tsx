@@ -139,6 +139,12 @@ export function GdpDataTable({ data }: { data: GdpRecord[] }) {
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
               </TableHead>
+              <TableHead>
+                <Button variant="ghost" onClick={() => requestSort('country')}>
+                  Country
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </Button>
+              </TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -159,6 +165,7 @@ export function GdpDataTable({ data }: { data: GdpRecord[] }) {
                     `$${record.value.toLocaleString()}`
                   )}
                 </TableCell>
+                <TableCell>{record.country}</TableCell>
                 <TableCell className="text-right">
                   {editingRowId === record.id ? (
                     <div className="flex items-center justify-end gap-2">
@@ -207,7 +214,7 @@ export function GdpDataTable({ data }: { data: GdpRecord[] }) {
             ))}
              {paginatedData.length === 0 && (
               <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center">
+                <TableCell colSpan={4} className="h-24 text-center">
                   No records found. Add a new record to get started.
                 </TableCell>
               </TableRow>

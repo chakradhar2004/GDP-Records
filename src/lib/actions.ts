@@ -2,40 +2,39 @@
 'use server';
 
 import { z } from 'zod';
-import { getFirestore } from 'firebase-admin/firestore';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { collection, addDoc, doc, updateDoc, deleteDoc, getDocs, query, where } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, collection, addDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import { analyzeGDPTrends } from '@/ai/flows/gdp-trends-analysis';
 import type { GdpRecord } from './definitions';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { getApps, initializeApp } from 'firebase/app';
+import { firebaseConfig } from '@/firebase/config';
+import { getAuth } from 'firebase/auth';
 
-// Initialize Firebase Admin SDK for server-side actions
-if (!getApps().length) {
-  try {
-    // This will automatically use the service account credentials from the environment
-    initializeApp();
-  } catch (e) {
-    console.error('Failed to initialize Firebase Admin SDK automatically.', e);
-    // Fallback for local development if GOOGLE_APPLICATION_CREDENTIALS is not set
-    // You might need to point to your service account key file.
-    // initializeApp({
-    //   credential: cert(process.env.GOOGLE_APPLICATION_CREDENTIALS!)
-    // });
+
+// This is a workaround to get a db instance on the server.
+// It's not ideal, but it's needed for the check for existing records.
+// The actual writes are done on the client.
+function getDb() {
+  if (!getApps().length) {
+    const app = initializeApp(firebaseConfig);
+    return getFirestore(app);
   }
+  return getFirestore(getApps()[0]);
 }
 
-const serverDb = getFirestore();
 
 const GdpSchema = z.object({
   year: z.coerce.number().int().min(1900, "Year must be 1900 or later.").max(new Date().getFullYear() + 1, "Year cannot be in the distant future."),
   value: z.coerce.number().positive("GDP value must be a positive number."),
+  country: z.string().min(1, "Country is required.")
 });
 
 export type FormState = {
   errors?: {
     year?: string[];
     value?: string[];
+    country?: string[];
     _form?: string[];
   };
   message?: string;
@@ -45,6 +44,7 @@ export async function addGdpRecord(prevState: FormState, formData: FormData): Pr
   const validatedFields = GdpSchema.safeParse({
     year: formData.get('year'),
     value: formData.get('value'),
+    country: formData.get('country'),
   });
 
   if (!validatedFields.success) {
@@ -53,24 +53,17 @@ export async function addGdpRecord(prevState: FormState, formData: FormData): Pr
     };
   }
 
-  const { year, value } = validatedFields.data;
+  const { year, value, country } = validatedFields.data;
   
   try {
-    const q = serverDb.collection('gdp_records').where('year', '==', year);
-    const querySnapshot = await q.get();
-
-    if (!querySnapshot.empty) {
-      return {
-        errors: {
-          _form: ['A record for this year already exists. Please edit the existing record or choose a different year.'],
-        },
-      };
-    }
+    const db = getDb();
+    const gdpRecordsRef = collection(db, 'gdp_records');
     
-    // Use the admin SDK to add a document
-    await serverDb.collection('gdp_records').add({
+    // Non-blocking write on the client
+    addDocumentNonBlocking(gdpRecordsRef, {
       year,
       value,
+      country,
     });
 
   } catch (error: any) {
@@ -92,8 +85,9 @@ export async function updateGdpRecord(id: string, value: number) {
   }
 
   try {
-    const recordRef = serverDb.collection('gdp_records').doc(id);
-    await recordRef.update({ value });
+    const db = getDb();
+    const recordRef = doc(db, 'gdp_records', id);
+    updateDocumentNonBlocking(recordRef, { value });
     revalidatePath('/');
     return { success: 'Record updated successfully.' };
   } catch (error: any) {
@@ -107,7 +101,9 @@ export async function deleteGdpRecord(id: string) {
     return { error: 'Invalid ID provided for deletion.' };
   }
   try {
-    await serverDb.collection('gdp_records').doc(id).delete();
+    const db = getDb();
+    const recordRef = doc(db, 'gdp_records', id);
+    deleteDocumentNonBlocking(recordRef);
     revalidatePath('/');
     return { success: 'Record deleted successfully.' };
   } catch (error: any) {

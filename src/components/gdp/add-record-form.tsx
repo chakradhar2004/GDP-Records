@@ -89,6 +89,25 @@ export function AddRecordForm() {
             ))}
         </div>
       </div>
+       <div className="space-y-2">
+        <Label htmlFor="country">Country</Label>
+        <Input
+          id="country"
+          name="country"
+          type="text"
+          placeholder="e.g., United States"
+          required
+          aria-describedby="country-error"
+        />
+        <div id="country-error" aria-live="polite" aria-atomic="true">
+          {state?.errors?.country &&
+            state.errors.country.map((error: string) => (
+              <p className="mt-2 text-sm text-destructive" key={error}>
+                {error}
+              </p>
+            ))}
+        </div>
+      </div>
       
       {state?.errors?._form && (
         <Alert variant="destructive">

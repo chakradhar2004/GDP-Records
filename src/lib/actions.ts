@@ -2,13 +2,30 @@
 'use server';
 
 import { z } from 'zod';
-import { db } from '@/lib/firebase';
+import { getFirestore } from 'firebase-admin/firestore';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { collection, addDoc, doc, updateDoc, deleteDoc, getDocs, query, where } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import { analyzeGDPTrends } from '@/ai/flows/gdp-trends-analysis';
 import type { GdpRecord } from './definitions';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { firestore } from 'firebase-admin';
+
+// Initialize Firebase Admin SDK for server-side actions
+if (!getApps().length) {
+  try {
+    // This will automatically use the service account credentials from the environment
+    initializeApp();
+  } catch (e) {
+    console.error('Failed to initialize Firebase Admin SDK automatically.', e);
+    // Fallback for local development if GOOGLE_APPLICATION_CREDENTIALS is not set
+    // You might need to point to your service account key file.
+    // initializeApp({
+    //   credential: cert(process.env.GOOGLE_APPLICATION_CREDENTIALS!)
+    // });
+  }
+}
+
+const serverDb = getFirestore();
 
 const GdpSchema = z.object({
   year: z.coerce.number().int().min(1900, "Year must be 1900 or later.").max(new Date().getFullYear() + 1, "Year cannot be in the distant future."),
@@ -39,9 +56,8 @@ export async function addGdpRecord(prevState: FormState, formData: FormData): Pr
   const { year, value } = validatedFields.data;
   
   try {
-    // Check if a record for the year already exists
-    const q = query(collection(db, 'gdp_records'), where('year', '==', year));
-    const querySnapshot = await getDocs(q);
+    const q = serverDb.collection('gdp_records').where('year', '==', year);
+    const querySnapshot = await q.get();
 
     if (!querySnapshot.empty) {
       return {
@@ -50,15 +66,18 @@ export async function addGdpRecord(prevState: FormState, formData: FormData): Pr
         },
       };
     }
-
-    addDocumentNonBlocking(collection(db, 'gdp_records'), {
+    
+    // Use the admin SDK to add a document
+    await serverDb.collection('gdp_records').add({
       year,
       value,
     });
-  } catch (error) {
+
+  } catch (error: any) {
+    console.error("Firestore Error in addGdpRecord:", error);
     return {
       errors: {
-        _form: ['Database Error: Failed to create GDP record.'],
+        _form: ['Database Error: Failed to create GDP record.', error.message],
       }
     };
   }
@@ -73,11 +92,12 @@ export async function updateGdpRecord(id: string, value: number) {
   }
 
   try {
-    const recordRef = doc(db, 'gdp_records', id);
-    updateDocumentNonBlocking(recordRef, { value });
+    const recordRef = serverDb.collection('gdp_records').doc(id);
+    await recordRef.update({ value });
     revalidatePath('/');
     return { success: 'Record updated successfully.' };
-  } catch (error) {
+  } catch (error: any) {
+     console.error("Firestore Error in updateGdpRecord:", error);
     return { error: 'Database Error: Failed to update record.' };
   }
 }
@@ -87,10 +107,11 @@ export async function deleteGdpRecord(id: string) {
     return { error: 'Invalid ID provided for deletion.' };
   }
   try {
-    deleteDocumentNonBlocking(doc(db, 'gdp_records', id));
+    await serverDb.collection('gdp_records').doc(id).delete();
     revalidatePath('/');
     return { success: 'Record deleted successfully.' };
-  } catch (error) {
+  } catch (error: any) {
+    console.error("Firestore Error in deleteGdpRecord:", error);
     return { error: 'Database Error: Failed to delete record.' };
   }
 }

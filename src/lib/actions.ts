@@ -7,6 +7,8 @@ import { collection, addDoc, doc, updateDoc, deleteDoc, getDocs, query, where } 
 import { revalidatePath } from 'next/cache';
 import { analyzeGDPTrends } from '@/ai/flows/gdp-trends-analysis';
 import type { GdpRecord } from './definitions';
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { firestore } from 'firebase-admin';
 
 const GdpSchema = z.object({
   year: z.coerce.number().int().min(1900, "Year must be 1900 or later.").max(new Date().getFullYear() + 1, "Year cannot be in the distant future."),
@@ -49,7 +51,7 @@ export async function addGdpRecord(prevState: FormState, formData: FormData): Pr
       };
     }
 
-    await addDoc(collection(db, 'gdp_records'), {
+    addDocumentNonBlocking(collection(db, 'gdp_records'), {
       year,
       value,
     });
@@ -72,7 +74,7 @@ export async function updateGdpRecord(id: string, value: number) {
 
   try {
     const recordRef = doc(db, 'gdp_records', id);
-    await updateDoc(recordRef, { value });
+    updateDocumentNonBlocking(recordRef, { value });
     revalidatePath('/');
     return { success: 'Record updated successfully.' };
   } catch (error) {
@@ -85,7 +87,7 @@ export async function deleteGdpRecord(id: string) {
     return { error: 'Invalid ID provided for deletion.' };
   }
   try {
-    await deleteDoc(doc(db, 'gdp_records', id));
+    deleteDocumentNonBlocking(doc(db, 'gdp_records', id));
     revalidatePath('/');
     return { success: 'Record deleted successfully.' };
   } catch (error) {

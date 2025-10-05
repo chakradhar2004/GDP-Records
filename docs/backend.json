@@ -29,6 +29,30 @@
         "value",
         "country"
       ]
+    },
+    "User": {
+      "title": "User",
+      "description": "Represents a user of the application.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The user's unique ID from Firebase Authentication."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        }
+      },
+      "required": [
+        "uid",
+        "email"
+      ]
     }
   },
   "auth": {
@@ -38,24 +62,17 @@
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/gdp_records/{gdpRecordId}",
-        "definition": {
-          "entityName": "GDPRecord",
-          "schema": {
-            "$ref": "#/backend/entities/GDPRecord"
-          },
-          "description": "Stores GDP records.  No denormalized authorization fields are required as there are no specific access controls defined.",
-          "params": [
-            {
-              "name": "gdpRecordId",
-              "description": "Unique identifier for the GDP record."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "Given the application's requirements for displaying, creating, updating, and deleting GDP records, and the absence of user-specific data ownership, a single top-level collection `gdp_records` is appropriate. This simplifies data access and management. Since there's no user-specific access control mentioned and all records seem to be managed globally, authorization independence isn't a primary concern. The single collection structure supports the QAPs for listing records, as Firestore rules can control access based on record content if needed, though currently no specific filtering or access restrictions are defined beyond general read/write access.  If user-based access control is added in the future, the structure can be adapted (e.g., adding an `ownerId` field and modifying security rules)."
+    "/gdp_records/{gdpRecordId}": {
+      "schema": {
+        "$ref": "#/entities/GDPRecord"
+      },
+      "description": "Stores GDP records."
+    },
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "Stores user profile information."
+    }
   }
 }

@@ -31,14 +31,21 @@ export function AddRecordForm() {
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (state.message) {
+    if (state?.message) {
       toast({
         title: 'Success!',
         description: state.message,
       });
       formRef.current?.reset();
     }
-  }, [state.message, toast]);
+    if (state?.errors?._form) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: state.errors._form.join(', '),
+      });
+    }
+  }, [state, toast]);
 
   return (
     <form ref={formRef} action={dispatch} className="space-y-4">
@@ -54,7 +61,7 @@ export function AddRecordForm() {
           aria-describedby="year-error"
         />
         <div id="year-error" aria-live="polite" aria-atomic="true">
-          {state.errors?.year &&
+          {state?.errors?.year &&
             state.errors.year.map((error: string) => (
               <p className="mt-2 text-sm text-destructive" key={error}>
                 {error}
@@ -74,7 +81,7 @@ export function AddRecordForm() {
           aria-describedby="value-error"
         />
         <div id="value-error" aria-live="polite" aria-atomic="true">
-          {state.errors?.value &&
+          {state?.errors?.value &&
             state.errors.value.map((error: string) => (
               <p className="mt-2 text-sm text-destructive" key={error}>
                 {error}
@@ -83,7 +90,7 @@ export function AddRecordForm() {
         </div>
       </div>
       
-      {state.errors?._form && (
+      {state?.errors?._form && (
         <Alert variant="destructive">
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>

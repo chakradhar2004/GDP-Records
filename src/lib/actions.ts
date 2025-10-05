@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-import { getFirestore, doc, getDoc, collection, addDoc } from 'firebase/firestore';
+import { getFirestore, doc, collection } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import { analyzeGDPTrends } from '@/ai/flows/gdp-trends-analysis';
 import type { GdpRecord } from './definitions';
@@ -52,31 +52,12 @@ export async function addGdpRecord(prevState: FormState, formData: FormData): Pr
       errors: validatedFields.error.flatten().fieldErrors,
     };
   }
-
-  const { year, value, country } = validatedFields.data;
   
-  try {
-    const db = getDb();
-    const gdpRecordsRef = collection(db, 'gdp_records');
-    
-    // Non-blocking write on the client
-    addDocumentNonBlocking(gdpRecordsRef, {
-      year,
-      value,
-      country,
-    });
-
-  } catch (error: any) {
-    console.error("Firestore Error in addGdpRecord:", error);
-    return {
-      errors: {
-        _form: ['Database Error: Failed to create GDP record.', error.message],
-      }
-    };
-  }
+  // This server action now only revalidates the path.
+  // The client will handle the database write.
 
   revalidatePath('/');
-  return { message: `Successfully added record for ${year}.`};
+  return { message: `Successfully added record.`};
 }
 
 export async function updateGdpRecord(id: string, value: number) {
@@ -106,7 +87,8 @@ export async function deleteGdpRecord(id: string) {
     deleteDocumentNonBlocking(recordRef);
     revalidatePath('/');
     return { success: 'Record deleted successfully.' };
-  } catch (error: any) {
+  } catch (error: any)
+{
     console.error("Firestore Error in deleteGdpRecord:", error);
     return { error: 'Database Error: Failed to delete record.' };
   }

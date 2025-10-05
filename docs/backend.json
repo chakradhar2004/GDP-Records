@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "GDPRecord": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "GDPRecord",
+      "type": "object",
+      "description": "Represents a single GDP record for a specific year.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the GDP record."
+        },
+        "year": {
+          "type": "number",
+          "description": "The year for which the GDP value is recorded."
+        },
+        "value": {
+          "type": "number",
+          "description": "The GDP value for the given year, in US dollars."
+        },
+        "country": {
+          "type": "string",
+          "description": "The country for which the GDP is recorded"
+        }
+      },
+      "required": [
+        "id",
+        "year",
+        "value",
+        "country"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/gdp_records/{gdpRecordId}",
+        "definition": {
+          "entityName": "GDPRecord",
+          "schema": {
+            "$ref": "#/backend/entities/GDPRecord"
+          },
+          "description": "Stores GDP records.  No denormalized authorization fields are required as there are no specific access controls defined.",
+          "params": [
+            {
+              "name": "gdpRecordId",
+              "description": "Unique identifier for the GDP record."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "Given the application's requirements for displaying, creating, updating, and deleting GDP records, and the absence of user-specific data ownership, a single top-level collection `gdp_records` is appropriate. This simplifies data access and management. Since there's no user-specific access control mentioned and all records seem to be managed globally, authorization independence isn't a primary concern. The single collection structure supports the QAPs for listing records, as Firestore rules can control access based on record content if needed, though currently no specific filtering or access restrictions are defined beyond general read/write access.  If user-based access control is added in the future, the structure can be adapted (e.g., adding an `ownerId` field and modifying security rules)."
+  }
+}

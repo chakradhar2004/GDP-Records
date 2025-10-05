@@ -1,0 +1,26 @@
+/**
+ * @file Firestore Security Rules
+ * @core_philosophy This ruleset allows public read access to GDP records, with unrestricted create, update, and delete operations. Since the application manages GDP records globally without user-specific ownership, no authorization checks are performed.
+ * @data_structure Data is stored in a top-level collection called `gdp_records`. Each document represents a single GDP record.
+ * @key_security_decisions No specific access controls are defined, so all operations are allowed.
+ * @denormalization_for_authorization Not applicable, as no authorization is performed.
+ * @structural_segregation Not applicable, as there's no separation between public and private data.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Allows public read access (get, list) to GDP records and unrestricted create, update, and delete operations.
+     * @path /gdp_records/{gdpRecordId}
+     * @allow (get, list) Allow anyone to read GDP records.
+     * @allow (create, update, delete) Allow anyone to create, update, or delete GDP records.
+     * @deny None. All requests are allowed.
+     * @principle No specific access control is enforced. All users can read and write all GDP records.
+     */
+    match /gdp_records/{gdpRecordId} {
+      allow get, list: if true;
+      allow create, update, delete: if true;
+    }
+  }
+}
